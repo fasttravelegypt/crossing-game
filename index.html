@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Frog Game Scalable</title>
+<style>
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    background: #222;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  canvas {
+    background: #88c070;
+    border: 2px solid #000;
+    display: block;
+    touch-action: manipulation;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Make canvas scalable
+function resizeCanvas() {
+    canvas.width = window.innerWidth * 0.5;
+    canvas.height = window.innerHeight * 0.8;
+}
+window.addEventListener('resize', () => {
+    resizeCanvas();
+    generateLanes();
+    resetFrog();
+});
+resizeCanvas();
+
+// Lane configuration
+const totalLanes = 10;
+let lanes = [];
+
+// Frog setup
+const frog = { width: 0, height: 0, x: 0, y: 0, color: '#0a0' };
+
+// Game state
+let gameStarted = false;
+let loading = false;
+let showStartScreen = true;
+let level = 1;
+
+// Arrows
+const arrows = [];
+const arrowSize = 50; // size of each arrow button
+
+// Generate lanes
+function generateLanes() {
+    lanes = [];
+    const laneHeight = canvas.height / totalLanes;
+    for (let i = 0; i < totalLanes; i++) {
+        let lane = { y: i * laneHeight, safe: false, obstacle: null };
+        if (i === 0) lane.safe = true;
+        else if (i === 5) lane.safe = true;
+        else if (i === totalLanes - 1) lane.safe = true;
+        else {
+            const speed = (Math.random() * 2 + 1) * (Math.random() < 0.5 ? 1 : -1);
+            lane.obstacle = {
+                x: Math.random() * canvas.width,
+                width: canvas.width * 0.2,
+                height: laneHeight * 0.8,
+                color: '#800',
+                speed: speed
+            };
+        }
+        lanes.push(lane);
+    }
+}
+
+generateLanes();
+
+function resetFrog() {
+    const laneHeight = canvas.height / totalLanes;
+    frog.width = canvas.width * 0.1;
+    frog.height = laneHeight * 0.6;
+    frog.x = (canvas.width - frog.width) / 2;
+    frog.y = lanes[totalLanes - 1].y;
+}
+
+// Jump forward, left, right
+function jumpForward() {
+    if (!gameStarted) return;
+    const laneHeight = canvas.height / totalLanes;
+    frog.y -= laneHeight;
+    if (frog.y < 0) frog.y = 0;
+}
+function jumpLeft() {
+    if (!gameStarted) return;
+    frog.x -= frog.width;
+    if (frog.x < 0) frog.x = 0;
+}
+function jumpRight() {
+    if (!gameStarted) return;
+    frog.x += frog.width;
+    if (frog.x + frog.width > canvas.width) frog.x = canvas.width - frog.width;
+}
+
+// Controls
+document.addEventListener('keydown', e => {
+    if (showStartScreen) startGame();
+    else if (gameStarted && e.code === 'Space') jumpForward();
+});
+canvas.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    const touchY = touch.clientY - rect.top;
+
+    if (showStartScreen) startGame();
+    else {
+        // Check if an arrow was touched
+        for (let a of arrows) {
+            if (touchX >= a.x && touchX <= a.x + a.width &&
+                touchY >= a.y && touchY <= a.y + a.height) {
+                if (a.type === 'forward') jumpForward();
+                else if (a.type === 'left') jumpLeft();
+                else if (a.type === 'right') jumpRight();
+            }
+        }
+    }
+}, { passive: false });
+
+function startGame() {
+    showStartScreen = false;
+    loading = true;
+    
+    setTimeout(() => {
+        loading = false;
+        gameStarted = true;
+        resetFrog();
+    }, 1500);
+}
+
+// Game update
+function update() {
+    if (!gameStarted) return;
+
+    const laneHeight = canvas.height / totalLanes;
+
+    lanes.forEach(lane => {
+        if (!lane.safe && lane.obstacle) {
+            lane.obstacle.x += lane.obstacle.speed;
+            if (lane.obstacle.speed > 0 && lane.obstacle.x > canvas.width) lane.obstacle.x = -lane.obstacle.width;
+            if (lane.obstacle.speed < 0 && lane.obstacle.x + lane.obstacle.width < 0) lane.obstacle.x = canvas.width;
+        }
+    });
+
+    const frogLaneIndex = Math.round(frog.y / laneHeight);
+    const currentLane = lanes[frogLaneIndex];
+
+    if (currentLane && currentLane.obstacle) {
+        const obs = currentLane.obstacle;
+        if (frog.x < obs.x + obs.width &&
+            frog.x + frog.width > obs.x) {
+            resetFrog();
+        }
+    }
+
+    if (frogLaneIndex === 0) {
+        setTimeout(() => alert("Congratulations! You reached the end!"), 10);
+        level++;
+        generateLanes();
+        resetFrog();
+    }
+}
+
+// Draw arrow helper
+function drawArrow(x, y, symbol) {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(x, y, arrowSize, arrowSize);
+    ctx.fillStyle = '#000';
+    ctx.font = `${arrowSize * 0.6}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(symbol, x + arrowSize/2, y + arrowSize/2);
+}
+
+// Draw function
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const laneHeight = canvas.height / totalLanes;
+
+    // Draw lanes and obstacles
+    lanes.forEach(lane => {
+        if (lane.safe) ctx.fillStyle = '#666';
+        else if (lane.obstacle) ctx.fillStyle = lane.obstacle.color;
+
+        if (lane.safe) ctx.fillRect(0, lane.y, canvas.width, laneHeight);
+        else if (lane.obstacle) ctx.fillRect(lane.obstacle.x, lane.y, lane.obstacle.width, lane.obstacle.height);
+    });
+
+    // Highlight end lane
+    ctx.fillStyle = '#0ff';
+    ctx.fillRect(0, lanes[0].y, canvas.width, laneHeight);
+
+    // Draw frog
+    ctx.fillStyle = frog.color;
+    ctx.fillRect(frog.x, frog.y, frog.width, frog.height);
+
+    // Draw level at top-right
+    ctx.fillStyle = '#fff';
+    ctx.font = `${canvas.height * 0.035}px Arial`;
+    ctx.textAlign = 'right';
+    ctx.fillText(`Level: ${level}`, canvas.width - 10, 30);
+
+    // Draw arrows only on bottom lane
+    if (gameStarted && frog.y === lanes[totalLanes - 1].y) {
+        const startLaneY = lanes[totalLanes - 1].y + laneHeight/2;
+        arrows.length = 0; // clear previous arrows
+
+        // Forward (middle)
+        const forwardX = canvas.width / 2 - arrowSize/2;
+        const forwardY = startLaneY - arrowSize/2;
+        arrows.push({x: forwardX, y: forwardY, width: arrowSize, height: arrowSize, type: 'forward'});
+        drawArrow(forwardX, forwardY, '↑');
+
+        // Left
+        const leftX = canvas.width * 0.25 - arrowSize/2;
+        const leftY = startLaneY - arrowSize/2;
+        arrows.push({x: leftX, y: leftY, width: arrowSize, height: arrowSize, type: 'left'});
+        drawArrow(leftX, leftY, '←');
+
+        // Right
+        const rightX = canvas.width * 0.75 - arrowSize/2;
+        const rightY = startLaneY - arrowSize/2;
+        arrows.push({x: rightX, y: rightY, width: arrowSize, height: arrowSize, type: 'right'});
+        drawArrow(rightX, rightY, '→');
+    }
+}
+
+// Draw start screen
+function drawStartScreen() {
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = `${canvas.height * 0.05}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText("Help Travellers reach the restaurant", canvas.width / 2, canvas.height / 2 - 20);
+    ctx.font = `${canvas.height * 0.035}px Arial`;
+    ctx.fillText("Touch anywhere or press Space to start", canvas.width / 2, canvas.height / 2 + 30);
+}
+
+// Draw loading screen
+function drawLoadingScreen() {
+    ctx.fillStyle = '#222';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#fff';
+    ctx.font = `${canvas.height * 0.05}px Arial`;
+    ctx.textAlign = 'center';
+    ctx.fillText("Loading...", canvas.width / 2, canvas.height / 2);
+}
+
+// Game loop
+function gameLoop() {
+    if (showStartScreen) drawStartScreen();
+    else if (loading) drawLoadingScreen();
+    else {
+        update();
+        draw();
+    }
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+</script>
+
+</body>
+</html>
