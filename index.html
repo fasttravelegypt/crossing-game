@@ -55,10 +55,6 @@ let loading = false;
 let showStartScreen = true;
 let level = 1;
 
-// Arrows
-const arrows = [];
-const arrowSize = 50; // size of each arrow button
-
 // Generate lanes
 function generateLanes() {
     lanes = [];
@@ -115,24 +111,19 @@ document.addEventListener('keydown', e => {
     if (showStartScreen) startGame();
     else if (gameStarted && e.code === 'Space') jumpForward();
 });
+
 canvas.addEventListener('touchstart', e => {
     e.preventDefault();
     const touch = e.touches[0];
     const rect = canvas.getBoundingClientRect();
     const touchX = touch.clientX - rect.left;
-    const touchY = touch.clientY - rect.top;
 
     if (showStartScreen) startGame();
     else {
-        // Check if an arrow was touched
-        for (let a of arrows) {
-            if (touchX >= a.x && touchX <= a.x + a.width &&
-                touchY >= a.y && touchY <= a.y + a.height) {
-                if (a.type === 'forward') jumpForward();
-                else if (a.type === 'left') jumpLeft();
-                else if (a.type === 'right') jumpRight();
-            }
-        }
+        // Divide canvas into 3 vertical zones
+        if (touchX < canvas.width / 3) jumpLeft();
+        else if (touchX > canvas.width * 2/3) jumpRight();
+        else jumpForward();
     }
 }, { passive: false });
 
@@ -180,17 +171,6 @@ function update() {
     }
 }
 
-// Draw arrow helper
-function drawArrow(x, y, symbol) {
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(x, y, arrowSize, arrowSize);
-    ctx.fillStyle = '#000';
-    ctx.font = `${arrowSize * 0.6}px Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(symbol, x + arrowSize/2, y + arrowSize/2);
-}
-
 // Draw function
 function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -218,30 +198,6 @@ function draw() {
     ctx.font = `${canvas.height * 0.035}px Arial`;
     ctx.textAlign = 'right';
     ctx.fillText(`Level: ${level}`, canvas.width - 10, 30);
-
-    // Draw arrows only on bottom lane
-    if (gameStarted && frog.y === lanes[totalLanes - 1].y) {
-        const startLaneY = lanes[totalLanes - 1].y + laneHeight/2;
-        arrows.length = 0; // clear previous arrows
-
-        // Forward (middle)
-        const forwardX = canvas.width / 2 - arrowSize/2;
-        const forwardY = startLaneY - arrowSize/2;
-        arrows.push({x: forwardX, y: forwardY, width: arrowSize, height: arrowSize, type: 'forward'});
-        drawArrow(forwardX, forwardY, '↑');
-
-        // Left
-        const leftX = canvas.width * 0.25 - arrowSize/2;
-        const leftY = startLaneY - arrowSize/2;
-        arrows.push({x: leftX, y: leftY, width: arrowSize, height: arrowSize, type: 'left'});
-        drawArrow(leftX, leftY, '←');
-
-        // Right
-        const rightX = canvas.width * 0.75 - arrowSize/2;
-        const rightY = startLaneY - arrowSize/2;
-        arrows.push({x: rightX, y: rightY, width: arrowSize, height: arrowSize, type: 'right'});
-        drawArrow(rightX, rightY, '→');
-    }
 }
 
 // Draw start screen
