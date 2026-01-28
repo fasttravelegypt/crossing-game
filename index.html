@@ -177,8 +177,8 @@ generateLanes();
 
 function resetPlayer() {
     const laneHeight = canvas.height / DPR / totalLanes;
-    player.width = (canvas.width / DPR * 0.3) / 2;
-    player.height = (laneHeight * 0.8) / 2;
+    player.width = 35;
+    player.height = 35;
     player.x = (canvas.width / DPR - player.width) / 2;
     player.y = lanes[totalLanes - 1].y + (laneHeight - player.height) / 2;
 }
