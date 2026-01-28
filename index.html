@@ -15,29 +15,70 @@ html, body {
     background: #222;
 }
 
+/* ===== GAME AREA ===== */
+#gameContainer {
+    position: relative;
+    width: 100%;
+    height: 100%;
+}
+
 canvas {
     display: block;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
     background: #88c070;
     touch-action: manipulation;
+}
+
+/* ===== CONTROL AREA ===== */
+#controls {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    height: 22%;
+    display: flex;
+    background: #111;
+}
+
+.control-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 18px;
+    border-left: 1px solid #333;
+    user-select: none;
+}
+
+.control-btn:first-child {
+    border-left: none;
 }
 </style>
 </head>
 <body>
 
-<canvas id="gameCanvas"></canvas>
+<div id="gameContainer">
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="controls">
+        <div class="control-btn" id="btnLeft">LEFT</div>
+        <div class="control-btn" id="btnForward">JUMP</div>
+        <div class="control-btn" id="btnRight">RIGHT</div>
+    </div>
+</div>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
+
+const controls = document.getElementById('controls');
 
 /* ===== HIGH-DPI OPTIMIZATION ===== */
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
 function resizeCanvas() {
     const cssWidth = window.innerWidth;
-    const cssHeight = window.innerHeight;
+    const cssHeight = window.innerHeight - controls.offsetHeight;
 
     canvas.style.width = cssWidth + "px";
     canvas.style.height = cssHeight + "px";
@@ -146,6 +187,23 @@ function jumpRight() {
     }
 }
 
+/* ===== CONTROL BUTTON EVENTS ===== */
+document.getElementById('btnLeft').addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (showStartScreen) startGame();
+    jumpLeft();
+});
+document.getElementById('btnForward').addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (showStartScreen) startGame();
+    jumpForward();
+});
+document.getElementById('btnRight').addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (showStartScreen) startGame();
+    jumpRight();
+});
+
 document.addEventListener('keydown', e => {
     if (showStartScreen && (e.code === 'Space' || e.code === 'ArrowUp')) startGame();
     if (!gameStarted) return;
@@ -153,15 +211,6 @@ document.addEventListener('keydown', e => {
     if (e.code === 'ArrowLeft') jumpLeft();
     if (e.code === 'ArrowRight') jumpRight();
 });
-
-canvas.addEventListener('touchstart', e => {
-    e.preventDefault();
-    const x = e.touches[0].clientX;
-    if (showStartScreen) startGame();
-    else if (x < window.innerWidth / 3) jumpLeft();
-    else if (x > window.innerWidth * 2 / 3) jumpRight();
-    else jumpForward();
-}, { passive: false });
 
 function startGame() {
     showStartScreen = false;
@@ -234,7 +283,7 @@ function drawStartScreen() {
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
     ctx.fillText("Help Travellers reach the restaurant", canvas.width / DPR / 2, canvas.height / DPR / 2 - 20);
-    ctx.fillText("Touch or press Space to start", canvas.width / DPR / 2, canvas.height / DPR / 2 + 30);
+    ctx.fillText("Touch controls or press Space", canvas.width / DPR / 2, canvas.height / DPR / 2 + 30);
 }
 
 function drawLoadingScreen() {
