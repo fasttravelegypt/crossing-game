@@ -15,7 +15,6 @@ html, body {
     background: #222;
 }
 
-/* ===== GAME AREA ===== */
 #gameContainer {
     position: relative;
     width: 100%;
@@ -29,7 +28,6 @@ canvas {
     touch-action: manipulation;
 }
 
-/* ===== CONTROL AREA ===== */
 #controls {
     position: absolute;
     bottom: 0;
@@ -70,10 +68,8 @@ canvas {
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-
 const controls = document.getElementById('controls');
 
-/* ===== HIGH-DPI OPTIMIZATION ===== */
 const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
 function resizeCanvas() {
@@ -96,16 +92,33 @@ window.addEventListener('resize', () => {
 resizeCanvas();
 
 const totalLanes = 10;
+const middleSafeLane = Math.floor(totalLanes / 2);
 let lanes = [];
 
 /* ===== PLAYER ===== */
 const player = { width: 0, height: 0, x: 0, y: 0 };
 const playerImage = new Image();
+
+let assetsLoaded = 0;
+let assetsReady = false;
+
+playerImage.onload = () => {
+    assetsLoaded++;
+    checkAssetsReady();
+};
 playerImage.src = 'assets/player.png';
 
+function checkAssetsReady() {
+    if (assetsLoaded === 1) {
+        assetsReady = true;
+        loading = false;
+        gameStarted = true;
+        resetPlayer();
+    }
+}
+
 let gameStarted = false;
-let loading = false;
-let showStartScreen = true;
+let loading = true;
 let level = 1;
 
 const OBSTACLE_TYPES = [
@@ -128,7 +141,8 @@ function generateLanes() {
     let fastRatio = Math.min(0.9, (level - 1) / 39 * 0.9);
 
     for (let i = 0; i < totalLanes; i++) {
-        let lane = { y: i * laneHeight, safe: i === 0 || i === totalLanes - 1, obstacles: [] };
+        let isSafe = i === 0 || i === totalLanes - 1 || (i === middleSafeLane && level < 30);
+        let lane = { y: i * laneHeight, safe: isSafe, obstacles: [] };
 
         if (!lane.safe) {
             let eligible = OBSTACLE_TYPES.filter(t => level >= t.minLevel);
@@ -142,10 +156,11 @@ function generateLanes() {
             const count = Math.min(1 + difficultyStage, obstacle.max);
             const w = (canvas.width / DPR) * obstacle.width;
             const dir = Math.random() < 0.5 ? 1 : -1;
+            const spacing = w * 1.5;
 
             for (let j = 0; j < count; j++) {
                 lane.obstacles.push({
-                    x: Math.random() * (canvas.width / DPR),
+                    x: j * spacing,
                     width: w,
                     height: laneHeight * 0.8,
                     speed: obstacle.speed * dir,
@@ -188,39 +203,15 @@ function jumpRight() {
 }
 
 /* ===== CONTROL BUTTON EVENTS ===== */
-document.getElementById('btnLeft').addEventListener('touchstart', e => {
-    e.preventDefault();
-    if (showStartScreen) startGame();
-    jumpLeft();
+['btnLeft','btnForward','btnRight'].forEach(id => {
+    document.getElementById(id).addEventListener('touchstart', e => {
+        e.preventDefault();
+        if (!gameStarted) return;
+        if (id === 'btnLeft') jumpLeft();
+        if (id === 'btnForward') jumpForward();
+        if (id === 'btnRight') jumpRight();
+    });
 });
-document.getElementById('btnForward').addEventListener('touchstart', e => {
-    e.preventDefault();
-    if (showStartScreen) startGame();
-    jumpForward();
-});
-document.getElementById('btnRight').addEventListener('touchstart', e => {
-    e.preventDefault();
-    if (showStartScreen) startGame();
-    jumpRight();
-});
-
-document.addEventListener('keydown', e => {
-    if (showStartScreen && (e.code === 'Space' || e.code === 'ArrowUp')) startGame();
-    if (!gameStarted) return;
-    if (e.code === 'Space' || e.code === 'ArrowUp') jumpForward();
-    if (e.code === 'ArrowLeft') jumpLeft();
-    if (e.code === 'ArrowRight') jumpRight();
-});
-
-function startGame() {
-    showStartScreen = false;
-    loading = true;
-    setTimeout(() => {
-        loading = false;
-        gameStarted = true;
-        resetPlayer();
-    }, 800);
-}
 
 function update() {
     if (!gameStarted) return;
@@ -261,7 +252,6 @@ function draw() {
             ctx.fillStyle = '#666';
             ctx.fillRect(0, l.y, canvas.width / DPR, h);
         }
-
         l.obstacles.forEach(o => {
             ctx.fillStyle = o.color;
             ctx.fillRect(o.x, l.y, o.width, o.height);
@@ -277,27 +267,18 @@ function draw() {
     ctx.fillText(`Level: ${level}`, canvas.width / DPR - 10, 30);
 }
 
-function drawStartScreen() {
-    ctx.fillStyle = '#222';
-    ctx.fillRect(0, 0, canvas.width / DPR, canvas.height / DPR);
-    ctx.fillStyle = '#fff';
-    ctx.textAlign = 'center';
-    ctx.fillText("Help Travellers reach the restaurant", canvas.width / DPR / 2, canvas.height / DPR / 2 - 20);
-    ctx.fillText("Touch controls or press Space", canvas.width / DPR / 2, canvas.height / DPR / 2 + 30);
-}
-
 function drawLoadingScreen() {
     ctx.fillStyle = '#222';
     ctx.fillRect(0, 0, canvas.width / DPR, canvas.height / DPR);
     ctx.fillStyle = '#fff';
     ctx.textAlign = 'center';
-    ctx.fillText("Loading...", canvas.width / DPR / 2, canvas.height / DPR / 2);
+    ctx.fillText("Loading assets...", canvas.width / DPR / 2, canvas.height / DPR / 2);
 }
 
 function gameLoop() {
-    if (showStartScreen) drawStartScreen();
-    else if (loading) drawLoadingScreen();
-    else {
+    if (!assetsReady || loading) {
+        drawLoadingScreen();
+    } else {
         update();
         draw();
     }
